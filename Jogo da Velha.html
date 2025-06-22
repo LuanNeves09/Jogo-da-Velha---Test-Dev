@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo da Velha</title>
+    <style>
+        body 
+        {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh; 
+            background-color: #f4f6f7;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 
+        {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+
+        #tabuleiro 
+        {
+            display: grid; 
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);  
+            width: 300px;
+            height: 300px;
+            border: 4px solid #1f3143; 
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            background-color: #ecf0f1;
+        }
+
+        .celula 
+        {
+            width: 100px;
+            height: 100px; 
+            border: 1px solid #384852; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3.5em; 
+            font-weight: bold;
+            color: #2980b9;
+        }
+        #OpcoesModoDeJogo
+        {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Jogo da Velha</h1>
+
+    <div id="OpcoesModoDeJogo">
+        <label for="ModoDeJogo">Modo de Jogo:</label>
+        <select id="ModoDeJogo">
+            <option value="HumanoVsMaquina">Humano vs Máquina</option>
+            <option value="MaquinaVsMaquina">Máquina vs Máquina</option>
+        </select>
+    </div>
+
+    <div id="tabuleiro">
+        <div class="celula" data-linha="0" data-coluna="0"></div>
+        <div class="celula" data-linha="0" data-coluna="1"></div>
+        <div class="celula" data-linha="0" data-coluna="2"></div>
+        <div class="celula" data-linha="1" data-coluna="0"></div>
+        <div class="celula" data-linha="1" data-coluna="1"></div>
+        <div class="celula" data-linha="1" data-coluna="2"></div>
+        <div class="celula" data-linha="2" data-coluna="0"></div>
+        <div class="celula" data-linha="2" data-coluna="1"></div>
+        <div class="celula" data-linha="2" data-coluna="2"></div>
+    </div>
+
+    <p id="mensagem"></p>
+    <button id="btnReiniciar">Reiniciar Jogo</button>
+
+    <script>
+        // ######################## CLASSE TABULEIRO ########################
+        class Tabuleiro 
+        {
+            constructor() // Inicializa o objeto (matriz 3x3) quando invocado com "new"
+            {
+                this.board = 
+                [
+                    ['', '', ''],
+                    ['', '', ''],
+                    ['', '', '']
+                ];
+                this.turnCount = 0; // Zerando o contador de jogadas 
+            }
+
+            reset() // Zerando todas as posições do tabuleiro
+            {
+                this.board = 
+                [
+                    ['', '', ''],
+                    ['', '', ''],
+                    ['', '', '']
+                ];
+                this.turnCount = 0;
+            }
+
+            marcarPosicao(linha, coluna, marcador) // Recebe a posição e o marcador, tentar marcar no tabuleiro e retorna caso for possível
+            {
+                // -> Verifica se a posição ta dentro dos limites do tabuleiro e se a célula está vazia
+                if (linha >= 0 && linha <= 2 && coluna >= 0 && coluna <= 2 && this.board[linha][coluna] === '') 
+                {
+                    this.board[linha][coluna] = marcador;
+                    this.turnCount++; // Incrementa o contador de jogadas
+                    return true; // A jogada é considerada válida
+                }
+                return false; // A jogada é considerada inválida
+            }
+
+            verificarVitoria(marcador) // Confere se alguém venceu o jogo checando todas as linhas, colunas e diagonais
+            {
+                // -> Função aux. pra verificar se três posições em sequência têm o mesmo marcador. Como se fosse uma "máscara"
+                const checkLine = (r1, c1, r2, c2, r3, c3) => // r = 'row', c = 'column'. '=>' é o arrow function, usei pra reduzir a qtd de código.
+                {
+                    return this.board[r1][c1] === marcador &&
+                           this.board[r2][c2] === marcador &&
+                           this.board[r3][c3] === marcador;
+                };
+                
+                for (let i = 0; i < 3; i++) { // Checar todas as linhas (horizontais)
+                    if (checkLine(i, 0, i, 1, i, 2)) return true;
+                }
+                
+                for (let i = 0; i < 3; i++) { // Checar todas as colunas (verticais)
+                    if (checkLine(0, i, 1, i, 2, i)) return true;
+                }
+
+                
+                if (checkLine(0, 0, 1, 1, 2, 2)) return true; // Diagonal principal (de cima-esquerda para baixo-direita)
+                
+                if (checkLine(0, 2, 1, 1, 2, 0)) return true; // Diagonal secundária (de cima-direita para baixo-esquerda)
+
+                return false; // Se ainda não houver vitória
+            }
+
+            verificarEmpate() // Se o turnCount atingir 9, significa que todas as células estão preenchidas
+            {
+                return this.turnCount === 9; 
+            }
+
+            obterEstado() // Vai me retornar o estado atual do tabuleiro
+            {
+                return this.board;
+            }
+
+            estaVazia(linha, coluna) // Usado pra obter o movimento automático, ela confere se a posição está preenchida
+            {
+                return this.board[linha][coluna] === '';
+            }
+        }
+
+        // ######################## CLASSE JOGADOR ########################
+        class Jogador 
+        {
+            constructor(nome, marcador, isAutomatico = false) // Inicializa o objeto (jogador) quando invocado com "new"
+            {
+                this.nome = nome;             // Nome do jogador
+                this.marcador = marcador;     // Símbolo do jogador ('X' ou 'O')
+                this.isAutomatico = isAutomatico; // True se for um jogador-máquina
+            }
+
+            getMarcador() // Método usado pra marcar posição, exibir mensagem e verificar vitória
+            {
+                return this.marcador;
+            }
+
+            getNome() // Método usado pra exibir mensagem
+            {
+                return this.nome;
+            }
+
+            // -> Calcula uma jogada aleatória válida gerando posições aleatórias até encontrar uma posição vazia no tabuleiro
+            obterMovimentoAutomatico(tabuleiro) 
+            {
+                let linha, coluna;
+                
+                // ----- Repete enquanto a célula não estiver vazia
+                do
+                {
+                    linha = Math.floor(Math.random() * 3); // Gera um número aleatório entre 0, 1 ou 2 para a linha
+                    coluna = Math.floor(Math.random() * 3);
+                }
+                while (!tabuleiro.estaVazia(linha, coluna));
+                // -----------
+                
+                return { linha, coluna };
+            }
+        }
+
+        // ######################## FUNÇÕES / LÓGICA PRINCIPAL DO JOGO ########################
+
+        // -> Elementos HTML usados no jogo
+        const tabuleiroHTML = document.getElementById('tabuleiro');
+        const mensagemHTML = document.getElementById('mensagem');
+        const btnReiniciar = document.getElementById('btnReiniciar');
+        const ModoDeJogoSelect = document.getElementById('ModoDeJogo');
+
+        // -> Variáveis dos estado do jogo
+        let tabuleiro; // Instância da classe Tabuleiro()
+        let jogadorX; // Instância do jogador "X"
+        let jogadorO; // Instância do jogador "O"
+        let jogadorAtual; // Qual ogador que deve jogar na vez atual
+        let jogoTerminado; // True se o jogo acabou (seja vitória ou empate)
+
+        function iniciarJogo() // Chamada quando inicia a página web, troca o modo, reinicia o jogo ou alguém vence
+        {
+            tabuleiro = new Tabuleiro(); // Vai cria um novo tabuleiro lógico
+            jogoTerminado = false; // Reseta a condição de término do jogo
+
+            // ------- -> Define o jogador com base no modo selecionado
+            modoAtual = ModoDeJogoSelect.value;
+            if (modoAtual === 'HumanoVsMaquina') 
+            {
+                jogadorX = new Jogador('Você', 'X', false);
+                jogadorO = new Jogador('Máquina', 'O', true); // True indica que vai jogar automaticamente
+            } 
+            else if (modoAtual === 'MaquinaVsMaquina')
+            { 
+                jogadorX = new Jogador('Máquina 1', 'X', true);
+                jogadorO = new Jogador('Máquina 2', 'O', true);
+            }
+            // ---------------
+
+            jogadorAtual = jogadorX; // O jogador x sempre vai começar jogando, seja no modo usuário ou máquina
+
+            atualizarInterface(); // Atualiza o tabuleiro visual no HTML
+            exibirMensagem(`É a sua vez.`); // Exibe a mensagem inicial
+
+            if (jogadorAtual.isAutomatico || modoAtual === 'MaquinaVsMaquina') // Caso for uma jogada da máquina
+            {
+                fazerJogadaMaquina();
+            }
+        }
+
+        function atualizarInterface() // Atualiza o visual do tabuleiro no HTML para refletir o estado lógico da instância da classe Tabuleiro
+        {
+            const cells = tabuleiroHTML.children; // Obtém todas as div.celula's dentro do #tabuleiro
+            const boardState = tabuleiro.obterEstado(); // Obtém a matriz lógica do tabuleiro
+
+            for (let i = 0; i < cells.length; i++) // cells.length = qtd de div.celula's no tabuleiro
+            {
+                const celula = cells[i];
+                const linha = parseInt(celula.dataset.linha); // Lê a linha do atributo data-linha
+                const coluna = parseInt(celula.dataset.coluna);
+                                
+                celula.textContent = boardState[linha][coluna]; // Atualiza o texto da célula HTML com o marcador "X, O ou ''" do tab. lógico
+            }
+        }
+
+        function exibirMensagem(msg) // Mostra no HTML as informações durante a execução
+        {
+            mensagemHTML.textContent = msg;
+        }
+
+        function handleClick(event) // Lida com clicks no tabuleiro. 'event' é o objeto que contém info sobre o click
+        {
+            if (jogoTerminado || jogadorAtual.isAutomatico) // Confere se o jogo terminou ou se é a vez da máquina
+            {
+                return;
+            }
+
+            const celulaClicada = event.target; // Guarda o elemento HTML ('div.celula') que foi clicado
+
+            const linha = parseInt(celulaClicada.dataset.linha); // Converte o texto do atributo 'data-linha' para um número inteiro
+            const coluna = parseInt(celulaClicada.dataset.coluna);
+
+            const jogadaValida = tabuleiro.marcarPosicao(linha, coluna, jogadorAtual.getMarcador()); // Tenta fazer uma jogada
+
+            
+            if (jogadaValida) // Se a jogada foi válida (jogadaValida retornou 'true')
+            {
+                atualizarInterface(); // Atualiza o tabuleiro visível no HTML com a nova jogada
+                verificarEstadoJogo(); // Checa se alguém ganhou, se deu empate ou passa a vez
+            }
+            else
+            {
+                exibirMensagem("Essa célula já está ocupada");
+            }
+        }
+
+        function fazerJogadaMaquina() 
+        {
+            if (jogoTerminado) return; // Primeiro confiro se o jogo terminou, caso sim, não faz nada
+
+            exibirMensagem(`Máquina "${jogadorAtual.getMarcador()}" está pensando...`);
+            
+            setTimeout(() => // Para efeito visual, coloquei um delay de 850 ms pra máquina jogar
+            {
+                const { linha, coluna } = jogadorAtual.obterMovimentoAutomatico(tabuleiro); // Obtendo o valor da jogada
+                const jogadaValida = tabuleiro.marcarPosicao(linha, coluna, jogadorAtual.getMarcador()); // Marcando no tabuleiro
+                if (jogadaValida) // Sempre vai ser válido, devido à função 'obterMovimentoAutomatico'
+                {
+                    atualizarInterface();
+                    verificarEstadoJogo();
+                } 
+            }, 850); 
+        }
+
+        function verificarEstadoJogo() 
+        {
+            if (tabuleiro.verificarVitoria(jogadorAtual.getMarcador())) 
+            {
+                // -> Mensagem para o jogador vencedor
+                exibirMensagem(`${jogadorAtual.getNome()} (${jogadorAtual.getMarcador()}) Venceu!`);
+                jogoTerminado = true; // Define o jogo como terminado
+            } 
+            else if (tabuleiro.verificarEmpate()) 
+            {
+                exibirMensagem("O jogo empatou!");
+                jogoTerminado = true;
+            } 
+            else 
+            {
+                // -> Caso o jogo continue, passa a vez para o outro player
+                if (jogadorAtual === jogadorX) 
+                {
+                    jogadorAtual = jogadorO;
+                }
+                else
+                {
+                    jogadorAtual = jogadorX;
+                }
+                exibirMensagem(`É a sua vez.`);
+
+                if (jogadorAtual.isAutomatico || modoAtual === 'MaquinaVsMaquina') // Caso for uma jogada da máquina
+                {
+                    fazerJogadaMaquina();
+                }
+            }
+        }
+
+        // ###### EVENT LISTENERS ######
+        // -> Isso vai permitir a delegação de eventos para todas as células
+        tabuleiroHTML.addEventListener('click', handleClick);
+
+        // -> Se clicar no botão reiniciar, chama a função 'iniciarJogo'.
+        btnReiniciar.addEventListener('click', iniciarJogo);
+
+        // -> Se clicar no botão para mudar o modo de jogo, chama a função 'iniciarJogo'
+        ModoDeJogoSelect.addEventListener('change', iniciarJogo);
+
+        // -> Inicia o jogo automaticamente quando a página é carregada pela primeira vez, já permitindo jogar
+        iniciarJogo();
+    </script>
+</body>
+</html>
